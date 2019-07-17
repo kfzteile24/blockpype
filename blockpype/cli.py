@@ -36,7 +36,7 @@ def setup_args():
 
     parser.add_argument('pipe_args', type=str, nargs='+', help='Process to start and pipe to')
 
-    return parser.parse_args()
+    return parser.parse_known_args()
 
 
 def endproc(proc: subprocess.Popen):
@@ -53,7 +53,7 @@ def endproc(proc: subprocess.Popen):
 def main():
     """Entry point for CLI
     """
-    args = setup_args()
+    args, unknownargs = setup_args()
     encoding = sys.stdin.encoding
     stream = None
     
@@ -73,7 +73,7 @@ def main():
             for line in stream:
                 if lines == 0:
                     # Open a process only at start of block
-                    proc = subprocess.Popen(args.pipe_args, stdin=subprocess.PIPE)
+                    proc = subprocess.Popen(args.pipe_args + unknownargs, stdin=subprocess.PIPE)
 
                 # Write to process
                 proc.stdin.write(line)
