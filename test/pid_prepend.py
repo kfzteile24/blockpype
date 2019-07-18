@@ -5,6 +5,8 @@ import os, select, sys
 
 print('')
 print(f"PID: {os.getpid()}")
+print(sys.argv)
+sys.stderr.write("Sample stderr output\n")
 print('')
 
 if select.select([sys.stdin,],[],[],0.0)[0]:

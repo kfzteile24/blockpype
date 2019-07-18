@@ -6,7 +6,7 @@ def get_long_description():
 
 setup(
     name='blockpype',
-    version='1.0.0a1',
+    version='1.0.0a2',
 
     description="Breaks apart input stream into blocks and pipes each block into newly spawned processes",
     long_description=get_long_description(),

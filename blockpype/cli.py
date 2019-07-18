@@ -1,5 +1,5 @@
 import argparse
-import select, subprocess, sys
+import subprocess, sys
 
 
 def setup_args():
@@ -34,6 +34,12 @@ def setup_args():
         default=None
     )
 
+    parser.add_argument(
+        '--debug',
+        action="store_true",
+        help='Output debug information to stdout'
+    )
+
     parser.add_argument('pipe_args', type=str, nargs='+', help='Process to start and pipe to')
 
     return parser.parse_known_args()
@@ -63,15 +69,19 @@ def main():
     else:
         # Treat everything else as a byte stream
         stream = sys.stdin.buffer
-    
+
     # Enter only when input is present
-    if select.select([sys.stdin,],[],[],0.0)[0]:
+    if not sys.stdin.isatty():
         proc = None
         if args.lines:
             # Process line by line
             lines = 0
             for line in stream:
                 if lines == 0:
+                    if args.debug:
+                        print("blockpype > Starting process:")
+                        print("blockpype > " + " ".join(args.pipe_args + unknownargs))
+                        print("")
                     # Open a process only at start of block
                     proc = subprocess.Popen(args.pipe_args + unknownargs, stdin=subprocess.PIPE)
 
@@ -81,11 +91,16 @@ def main():
 
                 # Block is full. Finish writing to this process and end it
                 if lines == args.lines:
-                    lines = 0
                     if proc:
                         endproc(proc)
                         proc = None
+                    if args.debug:
+                        print(f"blockpype > Finished data block. Written {lines} lines to process. Ending process.")
+                    lines = 0
+
             if proc:
+                if args.debug:
+                    print(f"blockpype > Finished input data. Written {lines} lines to process. Ending process.")
                 endproc(proc)
 
         elif args.chars or args.bytes:
@@ -95,15 +110,21 @@ def main():
             buff_size = 10000
             while True:
                 if have_read == 0:
+                    if args.debug:
+                        print("blockpype > Starting process:")
+                        print("blockpype > " + " ".join(args.pipe_args + unknownargs))
+                        print("")
                     # Open a process only at start of block
-                    proc = subprocess.Popen(args.pipe_args, stdin=subprocess.PIPE)
+                    proc = subprocess.Popen(args.pipe_args + unknownargs, stdin=subprocess.PIPE)
 
-                if select.select([sys.stdin,],[],[],0.0)[0]:
-                    buff = stream.read(min([buff_size, block_size - have_read]))
-                else:
-                    buff = ''
+                buff = stream.read(min([buff_size, block_size - have_read]))
                 len_buff = len(buff)
                 if len_buff == 0:
+                    if args.debug:
+                        print(f"blockpype > Zero bytes in input. Ending.")
+                    if proc:
+                        endproc(proc)
+                        proc = None
                     break
 
                 # Write to process
@@ -115,6 +136,8 @@ def main():
 
                 # Block is full. Finish writing to this process and end it
                 if block_size == have_read:
+                    if args.debug:
+                        print(f"blockpype > Finished data block. Written {have_read} bytes or chars to process. Ending process.")
                     have_read = 0
                     if proc:
                         endproc(proc)
